@@ -11,7 +11,7 @@ class EidolonBot(discord.Client):
         super().__init__(*args, **kwargs)
 
     async def on_ready(self):
-        log(f'{self.user} | Ready!')
+        logger.info(f'{self.user} | Ready!')
 
         reset = 1000
         am = AlarmMan()
@@ -33,7 +33,7 @@ class EidolonBot(discord.Client):
 
                             reset -= 1
                             if reset < 0:
-                                log(am.refresh())
+                                logger.info(am.refresh())
                                 reset = 1000
                         except Exception as e:
                             logger.error(f'Error: {str(e)}')
@@ -51,17 +51,15 @@ def set_logger():
     logger.add(sys.stderr, level='INFO', format=log_format)
     logger.add(
         f'./logs/bot.log',
-        rotation='7 day',
-        retention='30 days',
+        rotation='1 day',
+        retention='7 days',
         level='INFO',
         encoding='UTF-8',
+        compression='gz',
         format=log_format
     )
 
-def log(msg):
-    logger.info(msg)
-
 if __name__ == '__main__':
     set_logger()
-    token = os.environ['TOKEN']
+    token = os.getenv('TOKEN')
     EidolonBot().run(token)
