@@ -15,16 +15,17 @@ class EidolonBot(discord.Client):
 
         reset = 1000
         am = AlarmMan()
-        alarm_channel_id = int(os.getenv('ALARM_CHANNEL'))
+        alarm_channel_id = os.getenv('ALARM_CHANNEL').split(',')
+        alarm_channel_id = set(list(map(int, alarm_channel_id)))
 
-        for channel in self.get_all_channels():
-            if channel.id == alarm_channel_id:
-                if channel.last_message_id is None:
-                    await channel.send(am.full_message())
+        while not self.is_closed():
+            for channel in self.get_all_channels():
+                if channel.id in alarm_channel_id:
+                    if channel.last_message_id is None:
+                        await channel.send(am.full_message())
 
-                msg = await channel.fetch_message(channel.last_message_id)
-                if msg.author == self.user:
-                    while not self.is_closed():
+                    msg = await channel.fetch_message(channel.last_message_id)
+                    if msg.author == self.user:
                         try:
                             if msg.content != am.full_message():
                                 await msg.edit(content=am.full_message())
