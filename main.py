@@ -25,12 +25,13 @@ class EidolonBot(commands.Bot):
 
 
 class ChannelAlarm(commands.Cog):
+    RESET = 10
     def __init__(self, channel, user):
         self.channel = channel
         self.user = user
         self.am = AlarmMan()
         self.printer.start()
-        self.reset = 1000
+        self.reset = ChannelAlarm.RESET
 
     def cog_unload(self):
         self.printer.cancel()
@@ -45,13 +46,12 @@ class ChannelAlarm(commands.Cog):
             try:
                 if msg.content != self.am.full_message():
                     await msg.edit(content=self.am.full_message())
-
-                await asyncio.sleep(3)
+                    logger.info(f"Edit {self.channel}")
 
                 self.reset -= 1
-                if self.reset < 0:
+                if self.reset <= 0:
                     logger.info(self.am.refresh())
-                    self.reset = 1000
+                    self.reset = ChannelAlarm.RESET
             except Exception as e:
                 logger.error(f"Error: {str(e)}")
 
