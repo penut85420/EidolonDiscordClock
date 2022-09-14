@@ -1,8 +1,7 @@
-import asyncio
 import os
 import sys
 
-import discord
+from discord import TextChannel, ClientUser
 from discord.ext import commands, tasks
 from loguru import logger
 
@@ -19,25 +18,54 @@ class EidolonBot(commands.Bot):
         alarm_channel_id = os.getenv("ALARM_CHANNEL").split(",")
         alarm_channel_id = set(list(map(int, alarm_channel_id)))
 
+        channels = list()
         for channel in self.get_all_channels():
             if channel.id in alarm_channel_id:
-                self.add_cog(ChannelAlarm(channel, self.user))
+                channels.append(channel)
+        self.add_cog(MasterCog(self, channels))
+
+
+class MasterCog(commands.Cog):
+    def __init__(self, bot: EidolonBot, channels):
+        self.bot = bot
+        self.channels = channels
+        self.cogs = list()
+        self.do_task.start()
+
+    def cog_unload(self):
+        self.do_task.cancel()
+
+    @tasks.loop(seconds=30)
+    async def do_task(self):
+        logger.info("Cog Reset")
+        for cog in self.cogs:
+            logger.info(f"Remove {cog}")
+            cog.cog_unload()
+            self.bot.remove_cog(cog)
+        self.cogs.clear()
+
+        for channel in self.channels:
+            cog = ChannelAlarm(channel, self.bot.user)
+            logger.info(f"Add {cog}")
+            self.bot.add_cog(cog)
+            self.cogs.append(cog)
 
 
 class ChannelAlarm(commands.Cog):
     RESET = 10
-    def __init__(self, channel, user):
+
+    def __init__(self, channel: TextChannel, user: ClientUser):
         self.channel = channel
         self.user = user
         self.am = AlarmMan()
-        self.printer.start()
+        self.do_task.start()
         self.reset = ChannelAlarm.RESET
 
     def cog_unload(self):
-        self.printer.cancel()
+        self.do_task.cancel()
 
     @tasks.loop(seconds=60)
-    async def printer(self):
+    async def do_task(self):
         if self.channel.last_message_id is None:
             await self.channel.send(self.am.full_message())
 
@@ -54,6 +82,9 @@ class ChannelAlarm(commands.Cog):
                     self.reset = ChannelAlarm.RESET
             except Exception as e:
                 logger.error(f"Error: {str(e)}")
+
+    def __repr__(self) -> str:
+        return f"ChannelAlarm({self.user}, {self.channel})"
 
 
 def set_logger():
