@@ -35,7 +35,7 @@ class MasterCog(commands.Cog):
     def cog_unload(self):
         self.do_task.cancel()
 
-    @tasks.loop(seconds=30)
+    @tasks.loop(seconds=300)
     async def do_task(self):
         logger.info("Cog Reset")
         for cog in self.cogs:
