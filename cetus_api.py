@@ -1,6 +1,5 @@
 import re
 import json
-import time
 import requests
 import datetime as dt
 
@@ -28,16 +27,16 @@ def get_time_string():
 
 def get_time():
     url = "https://api.warframestat.us/pc/cetusCycle"
-    r = None
-    while r is None:
-        try:
-            r = json.loads(requests.get(url).content)
-        except:
-            print("Cetus API Get Time Failed")
-            r = None
-            time.sleep(10)
+    try:
+        r = json.loads(requests.get(url).content)
+    except:
+        print("Cetus API Get Time Failed")
+        return None
 
     # Match Time Format
+    if "timeLeft" not in r:
+        return None
+
     m = re.search(r"((\d)h )?((\d+)m )?(\d+)s", r["timeLeft"])
     _, hh, _, mm, ss = m.groups()
     to_int = lambda x: 0 if x is None else int(x)

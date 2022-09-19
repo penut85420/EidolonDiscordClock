@@ -28,8 +28,9 @@ class EidolonBot(commands.Bot):
 class MasterCog(commands.Cog):
     def __init__(self, bot: EidolonBot, channels):
         self.bot = bot
-        self.channels = channels
-        self.cogs = list()
+        self.am = AlarmMan()
+        for channel in channels:
+            ChannelAlarm(channel, self.bot.user, self.am)
         self.do_task.start()
 
     def cog_unload(self):
@@ -37,29 +38,16 @@ class MasterCog(commands.Cog):
 
     @tasks.loop(seconds=300)
     async def do_task(self):
-        logger.info("Cog Reset")
-        for cog in self.cogs:
-            logger.info(f"Remove {cog}")
-            cog.cog_unload()
-            self.bot.remove_cog(cog)
-        self.cogs.clear()
-
-        for channel in self.channels:
-            cog = ChannelAlarm(channel, self.bot.user)
-            logger.info(f"Add {cog}")
-            self.bot.add_cog(cog)
-            self.cogs.append(cog)
+        logger.info("Refresh")
+        self.am.refresh()
 
 
 class ChannelAlarm(commands.Cog):
-    RESET = 10
-
-    def __init__(self, channel: TextChannel, user: ClientUser):
+    def __init__(self, channel: TextChannel, user: ClientUser, am: AlarmMan):
         self.channel = channel
         self.user = user
-        self.am = AlarmMan()
+        self.am = am
         self.do_task.start()
-        self.reset = ChannelAlarm.RESET
 
     def cog_unload(self):
         self.do_task.cancel()
@@ -72,14 +60,10 @@ class ChannelAlarm(commands.Cog):
         msg = await self.channel.fetch_message(self.channel.last_message_id)
         if msg.author == self.user:
             try:
-                if msg.content != self.am.full_message():
-                    await msg.edit(content=self.am.full_message())
+                full_msg = self.am.full_message()
+                if msg.content != full_msg:
+                    await msg.edit(content=full_msg)
                     logger.info(f"Edit {self.channel}")
-
-                self.reset -= 1
-                if self.reset <= 0:
-                    logger.info(self.am.refresh())
-                    self.reset = ChannelAlarm.RESET
             except Exception as e:
                 logger.error(f"Error: {str(e)}")
 
